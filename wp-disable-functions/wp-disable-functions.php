@@ -29,6 +29,8 @@ add_filter('pings_open', 'disable_comments', 20, 2);
 // Eliminar la sección de comentarios del panel de administración
 function remove_admin_menu_comments() {
     remove_menu_page('edit-comments.php');
+    remove_theme_support('block-templates');
+    remove_menu_page('site-editor.php');
 }
 add_action('admin_menu', 'remove_admin_menu_comments');
 
@@ -70,13 +72,6 @@ function disable_wp_updates() {
     add_filter('pre_site_transient_update_themes', '__return_null');
 }
 add_action('init', 'disable_wp_updates');
-
-// Desactivar el Site Editor (Editor de bloques completo)
-function disable_site_editor() {
-    remove_theme_support('block-templates');
-    remove_menu_page('site-editor.php');
-}
-add_action('after_setup_theme', 'disable_site_editor');
 
 // Deshabilitar el editor de apariencia
 function disable_theme_editor() {
