@@ -74,6 +74,7 @@ add_action('init', 'disable_wp_updates');
 // Desactivar el Site Editor (Editor de bloques completo)
 function disable_site_editor() {
     remove_theme_support('block-templates');
+    remove_menu_page('site-editor.php');
 }
 add_action('after_setup_theme', 'disable_site_editor');
 
@@ -89,3 +90,9 @@ function remove_editor_link() {
     remove_submenu_page('themes.php', 'theme-editor.php');
 }
 add_action('admin_menu', 'remove_editor_link', 999);
+
+// Desactivar la personalización de la apariencia mediante el editor de bloques
+function disable_customizer() {
+    remove_submenu_page('themes.php', 'customize.php');
+}
+add_action('admin_menu', 'disable_customizer', 999);
