@@ -57,3 +57,22 @@ add_action('wp_enqueue_scripts', 'remove_unnecessary_assets', 100);
 
 // Desactivar barra de administración
 add_filter('show_admin_bar', '__return_false');
+
+// Deshabilitar actualizaciones de WordPress y plugins
+function disable_wp_updates() {
+    remove_action('admin_init', '_maybe_update_core');
+    remove_action('wp_version_check', 'wp_version_check');
+    remove_action('admin_init', '_maybe_update_plugins');
+    remove_action('load-plugins.php', 'wp_update_plugins');
+    remove_action('load-themes.php', 'wp_update_themes');
+    add_filter('pre_site_transient_update_core', '__return_null');
+    add_filter('pre_site_transient_update_plugins', '__return_null');
+    add_filter('pre_site_transient_update_themes', '__return_null');
+}
+add_action('init', 'disable_wp_updates');
+
+// Desactivar el Site Editor (Editor de bloques completo)
+function disable_site_editor() {
+    remove_theme_support('block-templates');
+}
+add_action('after_setup_theme', 'disable_site_editor');
