@@ -3,7 +3,7 @@
  * Plugin Name: Tracking Packages
  * Description: Sistema de tracking de paquetes mediante la importación de un archivo Excel.
  * Version: 1.0
- * Author: Tu Nombre
+ * Author: Ing. Luis Angel Kala
  */
 
 // Evitar el acceso directo al plugin
