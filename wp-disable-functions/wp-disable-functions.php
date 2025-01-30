@@ -27,12 +27,14 @@ add_filter('comments_open', 'disable_comments', 20, 2);
 add_filter('pings_open', 'disable_comments', 20, 2);
 
 // Eliminar la sección de comentarios del panel de administración
-function remove_admin_menu_comments() {
+function remove_admin_menu() {
     remove_menu_page('edit-comments.php');
     remove_theme_support('block-templates');
     remove_menu_page('site-editor.php');
+    remove_submenu_page('themes.php', 'theme-editor.php');
+    remove_submenu_page('themes.php', 'customize.php');
 }
-add_action('admin_menu', 'remove_admin_menu_comments');
+add_action('admin_menu', 'remove_admin_menu');
 
 // Desactivar feeds RSS
 function disable_feeds() {
@@ -79,15 +81,3 @@ function disable_theme_editor() {
     define('DISALLOW_FILE_MODS', true);
 }
 add_action('init', 'disable_theme_editor');
-
-// Eliminar el enlace al Editor en la barra de menú
-function remove_editor_link() {
-    remove_submenu_page('themes.php', 'theme-editor.php');
-}
-add_action('admin_menu', 'remove_editor_link', 999);
-
-// Desactivar la personalización de la apariencia mediante el editor de bloques
-function disable_customizer() {
-    remove_submenu_page('themes.php', 'customize.php');
-}
-add_action('admin_menu', 'disable_customizer', 999);
