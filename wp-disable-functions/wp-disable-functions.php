@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Desactivar Funcionalidades de WordPress
- * Description: Desactiva publicaciones, comentarios, feeds, emojis y otros elementos innecesarios de WordPress.
+ * Plugin Name: Deshabilitar Funcionalidades de WordPress
+ * Description: Desactiva publicaciones, comentarios, feeds, emojis, scripts innecesarios y todo lo relacionado con la apariencia de WordPress.
  * Version: 1.0
  * Author: Tu Nombre
  */
@@ -10,35 +10,25 @@ if (!defined('ABSPATH')) {
     exit; // Salir si se accede directamente
 }
 
-// Desactivar el editor de entradas y páginas
-function disable_post_type_supports() {
-    remove_post_type_support('post', 'editor');
-    remove_post_type_support('page', 'editor');
-    remove_post_type_support('post', 'thumbnail');
-    remove_post_type_support('page', 'thumbnail');
+// Desactivar tipos de contenido predeterminados
+function disable_post_types() {
+    remove_menu_page('edit.php'); // Entradas
+    remove_menu_page('edit.php?post_type=page'); // Páginas
 }
-add_action('init', 'disable_post_type_supports');
+add_action('admin_menu', 'disable_post_types');
 
 // Desactivar comentarios
 function disable_comments() {
+    remove_menu_page('edit-comments.php');
     return false;
 }
 add_filter('comments_open', 'disable_comments', 20, 2);
 add_filter('pings_open', 'disable_comments', 20, 2);
-
-// Eliminar la sección de comentarios del panel de administración
-function remove_admin_menu() {
-    remove_menu_page('edit-comments.php');
-    remove_theme_support('block-templates');
-    remove_menu_page('site-editor.php');
-    remove_submenu_page('themes.php', 'theme-editor.php');
-    remove_submenu_page('themes.php', 'customize.php');
-}
-add_action('admin_menu', 'remove_admin_menu');
+add_action('admin_menu', 'disable_comments');
 
 // Desactivar feeds RSS
 function disable_feeds() {
-    wp_die(__('Los feeds están deshabilitados.')); 
+    wp_die(__('Los feeds están deshabilitados.'));
 }
 add_action('do_feed', 'disable_feeds', 1);
 add_action('do_feed_rdf', 'disable_feeds', 1);
@@ -59,25 +49,27 @@ function remove_unnecessary_assets() {
 }
 add_action('wp_enqueue_scripts', 'remove_unnecessary_assets', 100);
 
-// Desactivar barra de administración
+// Deshabilitar barra de administración
 add_filter('show_admin_bar', '__return_false');
 
 // Deshabilitar actualizaciones de WordPress y plugins
 function disable_wp_updates() {
-    remove_action('admin_init', '_maybe_update_core');
-    remove_action('wp_version_check', 'wp_version_check');
-    remove_action('admin_init', '_maybe_update_plugins');
-    remove_action('load-plugins.php', 'wp_update_plugins');
-    remove_action('load-themes.php', 'wp_update_themes');
     add_filter('pre_site_transient_update_core', '__return_null');
     add_filter('pre_site_transient_update_plugins', '__return_null');
     add_filter('pre_site_transient_update_themes', '__return_null');
 }
 add_action('init', 'disable_wp_updates');
 
-// Deshabilitar el editor de apariencia
-function disable_theme_editor() {
+// Desactivar el Editor de Apariencia y Personalización
+function disable_theme_customization() {
+    remove_menu_page('themes.php'); // Eliminar menú Apariencia
     define('DISALLOW_FILE_EDIT', true);
     define('DISALLOW_FILE_MODS', true);
 }
-add_action('init', 'disable_theme_editor');
+add_action('admin_menu', 'disable_theme_customization', 999);
+
+// Desactivar el Site Editor (Editor de Bloques Completo)
+function disable_site_editor() {
+    remove_theme_support('block-templates');
+}
+add_action('after_setup_theme', 'disable_site_editor');
