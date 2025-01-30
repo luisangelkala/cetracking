@@ -3,7 +3,7 @@
  * Plugin Name: Deshabilitar Funcionalidades de WordPress
  * Description: Desactiva publicaciones, comentarios, feeds, emojis, scripts innecesarios y todo lo relacionado con la apariencia de WordPress.
  * Version: 1.0
- * Author: Tu Nombre
+ * Author: Ing. Luis Angel Kala
  */
 
 if (!defined('ABSPATH')) {
@@ -73,3 +73,16 @@ function disable_site_editor() {
     remove_theme_support('block-templates');
 }
 add_action('after_setup_theme', 'disable_site_editor');
+
+// Desactivar la Biblioteca de Medios y la opción de subir archivos
+function disable_media_library() {
+    remove_menu_page('upload.php');
+}
+add_action('admin_menu', 'disable_media_library', 999);
+
+function disable_file_uploads($capabilities) {
+    $capabilities['upload_files'] = false;
+    return $capabilities;
+}
+add_filter('user_has_cap', 'disable_file_uploads');
+
