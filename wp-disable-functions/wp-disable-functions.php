@@ -14,12 +14,12 @@ if (!defined('ABSPATH')) {
 function disable_post_types() {
     remove_menu_page('edit.php'); // Entradas
     remove_menu_page('edit.php?post_type=page'); // Páginas
+    remove_menu_page('edit-comments.php');
 }
 add_action('admin_menu', 'disable_post_types');
 
 // Desactivar comentarios
 function disable_comments() {
-    remove_menu_page('edit-comments.php');
     return false;
 }
 add_filter('comments_open', 'disable_comments', 20, 2);
