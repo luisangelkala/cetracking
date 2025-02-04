@@ -16,7 +16,7 @@ function disable_post_types() {
     remove_menu_page('edit.php?post_type=page'); // Páginas
     remove_menu_page('edit-comments.php');
 }
-add_action('admin_menu', 'disable_post_types');
+//add_action('admin_menu', 'disable_post_types');
 
 // Desactivar comentarios
 function disable_comments() {
@@ -58,7 +58,7 @@ function disable_wp_updates() {
     add_filter('pre_site_transient_update_plugins', '__return_null');
     add_filter('pre_site_transient_update_themes', '__return_null');
 }
-add_action('init', 'disable_wp_updates');
+//add_action('init', 'disable_wp_updates');
 
 // Desactivar el Editor de Apariencia y Personalización
 /*function disable_theme_customization() {
