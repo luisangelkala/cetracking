@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name: Tracking Packages
- * Description: Sistema de tracking de paquetes mediante la importación de un archivo Excel.
- * Version: 1.0
- * Author: Ing. Luis Angel Kala
+ * Description: Sistema de tracking de paquetes con gestión de manifiestos.
+ * Version: 1.1
+ * Author: Tu Nombre
  */
 
 // Evitar el acceso directo al plugin
@@ -19,27 +19,18 @@ function tp_create_tables() {
     $table_manifests = $wpdb->prefix . 'tracking_manifests';
     $sql1 = "CREATE TABLE $table_manifests (
         id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-        manifest_number VARCHAR(50) NOT NULL,
-        description VARCHAR(255) NOT NULL,
-        PRIMARY KEY (id),
-        UNIQUE KEY manifest_number (manifest_number)
-    ) $charset_collate;";
-
-    // Tabla de paquetes (hija)
-    $table_packages = $wpdb->prefix . 'tracking_packages';
-    $sql2 = "CREATE TABLE $table_packages (
-        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-        manifest_id BIGINT(20) UNSIGNED NOT NULL,
-        bl_number VARCHAR(50) NOT NULL,
-        status VARCHAR(255) NOT NULL,
-        PRIMARY KEY (id),
-        FOREIGN KEY (manifest_id) REFERENCES $table_manifests(id) ON DELETE CASCADE,
-        UNIQUE KEY bl_number (bl_number)
+        company VARCHAR(100) NOT NULL,
+        country VARCHAR(100) NOT NULL,
+        consignee VARCHAR(100) NOT NULL,
+        guide_number VARCHAR(50) NOT NULL,
+        package_count INT NOT NULL,
+        weight DECIMAL(10,2) NOT NULL,
+        date DATE NOT NULL,
+        PRIMARY KEY (id)
     ) $charset_collate;";
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql1);
-    dbDelta($sql2);
 }
 
 // Crear menú en el backend
@@ -50,105 +41,101 @@ function tp_create_menu() {
         'Tracking Packages',
         'manage_options',
         'tracking-packages',
-        'tp_admin_page',
+        'tp_list_manifests',
         'dashicons-visibility',
         20
     );
+    add_submenu_page(
+        'tracking-packages',
+        'Añadir Manifiesto',
+        'Añadir Manifiesto',
+        'manage_options',
+        'add-manifest',
+        'tp_add_manifest_page'
+    );
+    add_submenu_page(
+        'tracking-packages',
+        'Listado de Manifiestos',
+        'Listado de Manifiestos',
+        'manage_options',
+        'list-manifests',
+        'tp_list_manifests'
+    );
 }
 
-// Página de administración para importar Excel
-function tp_admin_page() {
-    if (!current_user_can('manage_options')) return;
-
+// Página para listar manifiestos
+function tp_list_manifests() {
     global $wpdb;
     $table_manifests = $wpdb->prefix . 'tracking_manifests';
-    $table_packages = $wpdb->prefix . 'tracking_packages';
-
-    if (isset($_POST['tp_upload_csv']) && !empty($_FILES['tp_csv_file']['tmp_name'])) {
-        $file = $_FILES['tp_csv_file']['tmp_name'];
-
-        if (($handle = fopen($file, 'r')) !== false) {
-            // Leer el número de manifiesto desde la primera fila
-            $header = fgetcsv($handle, 1000, ',');
-            $manifest_number = sanitize_text_field($header[0]);
-            $description = 'Importado desde archivo';
-
-            // Insertar manifiesto
-            $wpdb->insert($table_manifests, [
-                'manifest_number' => $manifest_number,
-                'description' => $description
-            ]);
-
-            $manifest_id = $wpdb->insert_id;
-
-            // Procesar las filas restantes (BL y estado)
-            while (($data = fgetcsv($handle, 1000, ',')) !== false) {
-                $bl_number = sanitize_text_field($data[0]);
-                $status = sanitize_text_field($data[1]);
-
-                $wpdb->insert($table_packages, [
-                    'manifest_id' => $manifest_id,
-                    'bl_number' => $bl_number,
-                    'status' => $status
-                ]);
-            }
-            fclose($handle);
-            echo '<div class="updated"><p>Archivo importado exitosamente.</p></div>';
-        } else {
-            echo '<div class="error"><p>Error al leer el archivo.</p></div>';
-        }
-    }
+    $manifests = $wpdb->get_results("SELECT * FROM $table_manifests");
 
     echo '<div class="wrap">';
-    echo '<h1>Importar manifiesto y paquetes</h1>';
-    echo '<form method="post" enctype="multipart/form-data">';
-    echo '<label for="tp_csv_file">Archivo CSV:</label><br />';
-    echo '<input type="file" name="tp_csv_file" accept=".csv" required /><br /><br />';
-    echo '<input type="submit" name="tp_upload_csv" class="button button-primary" value="Importar CSV" />';
-    echo '</form>';
+    echo '<h1>Listado de Manifiestos</h1>';
+    echo '<table class="wp-list-table widefat fixed striped">';
+    echo '<thead><tr><th>Número de Guía</th><th>Cantidad de Bultos</th><th>Peso</th><th>Fecha</th><th>Acción</th></tr></thead>';
+    echo '<tbody>';
+    foreach ($manifests as $manifest) {
+        echo '<tr>';
+        echo '<td>' . esc_html($manifest->guide_number) . '</td>';
+        echo '<td>' . esc_html($manifest->package_count) . '</td>';
+        echo '<td>' . esc_html($manifest->weight) . ' kg</td>';
+        echo '<td>' . esc_html($manifest->date) . '</td>';
+        echo '<td><a href="admin.php?page=edit-manifest&id=' . $manifest->id . '" class="button">Editar</a></td>';
+        echo '</tr>';
+    }
+    echo '</tbody></table>';
     echo '</div>';
 }
 
-// Registrar y encolar CSS y JS
-add_action('wp_enqueue_scripts', 'tp_enqueue_scripts');
-function tp_enqueue_scripts() {
-    wp_enqueue_style('tp_styles', plugin_dir_url(__FILE__) . 'css/tracking-packages.css');
-    wp_enqueue_script('tp_scripts', plugin_dir_url(__FILE__) . 'js/tracking-packages.js', array('jquery'), null, true);
-}
-
-// Shortcode para mostrar el formulario de búsqueda
-add_shortcode('tracking_form', 'tp_tracking_form');
-function tp_tracking_form() {
+// Página para editar manifiesto
+add_submenu_page(null, 'Editar Manifiesto', 'Editar Manifiesto', 'manage_options', 'edit-manifest', 'tp_edit_manifest_page');
+function tp_edit_manifest_page() {
     global $wpdb;
     $table_manifests = $wpdb->prefix . 'tracking_manifests';
-    $table_packages = $wpdb->prefix . 'tracking_packages';
+    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+    $manifest = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_manifests WHERE id = %d", $id));
 
-    $output = '<form method="post" class="tp-tracking-form">';
-    $output .= '<label for="bl_number">Número de BL:</label> ';
-    $output .= '<input type="text" name="bl_number" id="bl_number" class="tp-input" required />';
-    $output .= '<input type="submit" value="Buscar" class="tp-button" />';
-    $output .= '</form>';
-
-    if (isset($_POST['bl_number'])) {
-        $bl_number = sanitize_text_field($_POST['bl_number']);
-        $result = $wpdb->get_row($wpdb->prepare(
-            "SELECT m.manifest_number, m.description, p.status 
-            FROM $table_packages p 
-            INNER JOIN $table_manifests m ON p.manifest_id = m.id 
-            WHERE p.bl_number = %s",
-            $bl_number
-        ));
-
-        if ($result) {
-            $output .= '<div class="tp-result">';
-            $output .= '<p><strong>Manifiesto:</strong> ' . esc_html($result->manifest_number) . '</p>';
-            $output .= '<p><strong>Descripción:</strong> ' . esc_html($result->description) . '</p>';
-            $output .= '<p><strong>Estado:</strong> ' . esc_html($result->status) . '</p>';
-            $output .= '</div>';
-        } else {
-            $output .= '<p class="tp-error">No se encontró el número de BL.</p>';
-        }
+    if (!$manifest) {
+        echo '<div class="error"><p>Manifiesto no encontrado.</p></div>';
+        return;
     }
 
-    return $output;
+    if (isset($_POST['tp_update_manifest'])) {
+        $company = sanitize_text_field($_POST['company']);
+        $country = sanitize_text_field($_POST['country']);
+        $consignee = sanitize_text_field($_POST['consignee']);
+        $guide_number = sanitize_text_field($_POST['guide_number']);
+        $package_count = intval($_POST['package_count']);
+        $weight = floatval($_POST['weight']);
+        $date = sanitize_text_field($_POST['date']);
+
+        $wpdb->update($table_manifests, [
+            'company' => $company,
+            'country' => $country,
+            'consignee' => $consignee,
+            'guide_number' => $guide_number,
+            'package_count' => $package_count,
+            'weight' => $weight,
+            'date' => $date
+        ], ['id' => $id]);
+
+        echo '<div class="updated"><p>Manifiesto actualizado exitosamente.</p></div>';
+    }
+
+    echo '<div class="wrap">';
+    echo '<h1>Editar Manifiesto</h1>';
+    echo '<form method="post">';
+    echo '<label>Empresa:</label><input type="text" name="company" value="' . esc_attr($manifest->company) . '" required /><br />';
+    echo '<label>País:</label><input type="text" name="country" value="' . esc_attr($manifest->country) . '" required /><br />';
+    echo '<label>Consignatario:</label><input type="text" name="consignee" value="' . esc_attr($manifest->consignee) . '" required /><br />';
+    echo '<label>Número de Guía:</label><input type="text" name="guide_number" value="' . esc_attr($manifest->guide_number) . '" required /><br />';
+    echo '<label>Cantidad de Bultos:</label><input type="number" name="package_count" value="' . esc_attr($manifest->package_count) . '" required /><br />';
+    echo '<label>Peso:</label><input type="text" name="weight" value="' . esc_attr($manifest->weight) . '" required /><br />';
+    echo '<label>Fecha:</label><input type="date" name="date" value="' . esc_attr($manifest->date) . '" required /><br />';
+    echo '<input type="submit" name="tp_update_manifest" class="button button-primary" value="Actualizar" />';
+    echo '</form>';
+    echo '<h2>Importar Archivo Excel</h2>';
+    echo '<input type="file" name="tp_excel_file" accept=".csv" required />';
+    echo '<input type="submit" class="button button-primary" value="Importar" />';
+    echo '</div>';
 }
