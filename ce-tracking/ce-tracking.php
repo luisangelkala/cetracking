@@ -1,36 +1,44 @@
 <?php
 /**
  * Plugin Name: Tracking Packages
- * Description: Sistema de tracking de paquetes con gestión de manifiestos.
- * Version: 1.2
+ * Description: Sistema de tracking de paquetes con gestión de manifiestos mediante Custom Post Types.
+ * Version: 1.4
  * Author: Tu Nombre
  */
 
 // Evitar el acceso directo al plugin
 defined('ABSPATH') || exit;
 
-// Crear tablas al activar el plugin
-register_activation_hook(__FILE__, 'tp_create_tables');
-function tp_create_tables() {
-    global $wpdb;
-    $charset_collate = $wpdb->get_charset_collate();
+// Registrar Custom Post Type para Manifiestos
+add_action('init', 'tp_register_cpt_manifests');
+function tp_register_cpt_manifests() {
+    $args = array(
+        'labels' => array(
+            'name' => 'Manifiestos',
+            'singular_name' => 'Manifiesto'
+        ),
+        'public' => true,
+        'has_archive' => true,
+        'supports' => array('title', 'editor', 'custom-fields'),
+        'menu_icon' => 'dashicons-portfolio',
+    );
+    register_post_type('tp_manifests', $args);
+}
 
-    // Tabla de manifiestos
-    $table_manifests = $wpdb->prefix . 'tracking_manifests';
-    $sql1 = "CREATE TABLE $table_manifests (
-        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-        company VARCHAR(100) NOT NULL,
-        country VARCHAR(100) NOT NULL,
-        consignee VARCHAR(100) NOT NULL,
-        guide_number VARCHAR(50) NOT NULL,
-        package_count INT NOT NULL,
-        weight DECIMAL(10,2) NOT NULL,
-        date DATE NOT NULL,
-        PRIMARY KEY (id)
-    ) $charset_collate;";
-
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql1);
+// Registrar Custom Post Type para Paquetes
+add_action('init', 'tp_register_cpt_packages');
+function tp_register_cpt_packages() {
+    $args = array(
+        'labels' => array(
+            'name' => 'Paquetes',
+            'singular_name' => 'Paquete'
+        ),
+        'public' => true,
+        'has_archive' => true,
+        'supports' => array('title', 'editor', 'custom-fields'),
+        'menu_icon' => 'dashicons-archive',
+    );
+    register_post_type('tp_packages', $args);
 }
 
 // Crear menú en el backend
@@ -63,11 +71,43 @@ function tp_create_menu() {
     );
 }
 
+// Página para añadir un manifiesto
+function tp_add_manifest_page() {
+    if (isset($_POST['tp_save_manifest'])) {
+        $post_id = wp_insert_post(array(
+            'post_type' => 'tp_manifests',
+            'post_title' => sanitize_text_field($_POST['guide_number']),
+            'post_status' => 'publish',
+            'meta_input' => array(
+                'company' => sanitize_text_field($_POST['company']),
+                'country' => sanitize_text_field($_POST['country']),
+                'consignee' => sanitize_text_field($_POST['consignee']),
+                'package_count' => intval($_POST['package_count']),
+                'weight' => floatval($_POST['weight']),
+                'date' => sanitize_text_field($_POST['date'])
+            )
+        ));
+        echo '<div class="updated"><p>Manifiesto añadido correctamente.</p></div>';
+    }
+
+    echo '<div class="wrap">';
+    echo '<h1>Añadir Manifiesto</h1>';
+    echo '<form method="post">';
+    echo '<label>Empresa:</label><input type="text" name="company" required /><br />';
+    echo '<label>País:</label><input type="text" name="country" required /><br />';
+    echo '<label>Consignatario:</label><input type="text" name="consignee" required /><br />';
+    echo '<label>Número de Guía:</label><input type="text" name="guide_number" required /><br />';
+    echo '<label>Cantidad de Bultos:</label><input type="number" name="package_count" required /><br />';
+    echo '<label>Peso:</label><input type="text" name="weight" required /><br />';
+    echo '<label>Fecha:</label><input type="date" name="date" required /><br />';
+    echo '<input type="submit" name="tp_save_manifest" class="button button-primary" value="Guardar" />';
+    echo '</form>';
+    echo '</div>';
+}
+
 // Página para listar manifiestos
 function tp_list_manifests() {
-    global $wpdb;
-    $table_manifests = $wpdb->prefix . 'tracking_manifests';
-    $manifests = $wpdb->get_results("SELECT * FROM $table_manifests");
+    $manifests = get_posts(array('post_type' => 'tp_manifests', 'numberposts' => -1));
 
     echo '<div class="wrap">';
     echo '<h1>Listado de Manifiestos</h1>';
@@ -76,72 +116,13 @@ function tp_list_manifests() {
     echo '<tbody>';
     foreach ($manifests as $manifest) {
         echo '<tr>';
-        echo '<td>' . esc_html($manifest->guide_number) . '</td>';
-        echo '<td>' . esc_html($manifest->package_count) . '</td>';
-        echo '<td>' . esc_html($manifest->weight) . ' kg</td>';
-        echo '<td>' . esc_html($manifest->date) . '</td>';
-        echo '<td><a href="admin.php?page=edit-manifest&id=' . $manifest->id . '" class="button">Editar</a></td>';
+        echo '<td>' . esc_html(get_post_meta($manifest->ID, 'guide_number', true)) . '</td>';
+        echo '<td>' . esc_html(get_post_meta($manifest->ID, 'package_count', true)) . '</td>';
+        echo '<td>' . esc_html(get_post_meta($manifest->ID, 'weight', true)) . ' kg</td>';
+        echo '<td>' . esc_html(get_post_meta($manifest->ID, 'date', true)) . '</td>';
+        echo '<td><a href="post.php?post=' . $manifest->ID . '&action=edit" class="button">Editar</a></td>';
         echo '</tr>';
     }
     echo '</tbody></table>';
-    echo '</div>';
-}
-
-// Manejar la página de edición de manifiesto dinámicamente
-add_action('admin_init', 'tp_check_edit_manifest');
-function tp_check_edit_manifest() {
-    if (isset($_GET['page']) && $_GET['page'] === 'edit-manifest') {
-        add_action('admin_menu', function() {
-            add_menu_page('Editar Manifiesto', 'Editar Manifiesto', 'manage_options', 'edit-manifest', 'tp_edit_manifest_page');
-        });
-    }
-}
-
-// Página para editar manifiesto
-function tp_edit_manifest_page() {
-    global $wpdb;
-    $table_manifests = $wpdb->prefix . 'tracking_manifests';
-    $id = isset($_GET['id']) ? intval($_GET['id']) : 0;
-    $manifest = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_manifests WHERE id = %d", $id));
-
-    if (!$manifest) {
-        echo '<div class="error"><p>Manifiesto no encontrado.</p></div>';
-        return;
-    }
-
-    if (isset($_POST['tp_update_manifest'])) {
-        $company = sanitize_text_field($_POST['company']);
-        $country = sanitize_text_field($_POST['country']);
-        $consignee = sanitize_text_field($_POST['consignee']);
-        $guide_number = sanitize_text_field($_POST['guide_number']);
-        $package_count = intval($_POST['package_count']);
-        $weight = floatval($_POST['weight']);
-        $date = sanitize_text_field($_POST['date']);
-
-        $wpdb->update($table_manifests, [
-            'company' => $company,
-            'country' => $country,
-            'consignee' => $consignee,
-            'guide_number' => $guide_number,
-            'package_count' => $package_count,
-            'weight' => $weight,
-            'date' => $date
-        ], ['id' => $id]);
-
-        echo '<div class="updated"><p>Manifiesto actualizado exitosamente.</p></div>';
-    }
-
-    echo '<div class="wrap">';
-    echo '<h1>Editar Manifiesto</h1>';
-    echo '<form method="post">';
-    echo '<label>Empresa:</label><input type="text" name="company" value="' . esc_attr($manifest->company) . '" required /><br />';
-    echo '<label>País:</label><input type="text" name="country" value="' . esc_attr($manifest->country) . '" required /><br />';
-    echo '<label>Consignatario:</label><input type="text" name="consignee" value="' . esc_attr($manifest->consignee) . '" required /><br />';
-    echo '<label>Número de Guía:</label><input type="text" name="guide_number" value="' . esc_attr($manifest->guide_number) . '" required /><br />';
-    echo '<label>Cantidad de Bultos:</label><input type="number" name="package_count" value="' . esc_attr($manifest->package_count) . '" required /><br />';
-    echo '<label>Peso:</label><input type="text" name="weight" value="' . esc_attr($manifest->weight) . '" required /><br />';
-    echo '<label>Fecha:</label><input type="date" name="date" value="' . esc_attr($manifest->date) . '" required /><br />';
-    echo '<input type="submit" name="tp_update_manifest" class="button button-primary" value="Actualizar" />';
-    echo '</form>';
     echo '</div>';
 }
