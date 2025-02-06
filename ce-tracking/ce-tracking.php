@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Tracking Packages
  * Description: Sistema de tracking de paquetes con gestión de manifiestos.
- * Version: 1.1
+ * Version: 1.2
  * Author: Tu Nombre
  */
 
@@ -87,8 +87,17 @@ function tp_list_manifests() {
     echo '</div>';
 }
 
+// Manejar la página de edición de manifiesto dinámicamente
+add_action('admin_init', 'tp_check_edit_manifest');
+function tp_check_edit_manifest() {
+    if (isset($_GET['page']) && $_GET['page'] === 'edit-manifest') {
+        add_action('admin_menu', function() {
+            add_menu_page('Editar Manifiesto', 'Editar Manifiesto', 'manage_options', 'edit-manifest', 'tp_edit_manifest_page');
+        });
+    }
+}
+
 // Página para editar manifiesto
-add_submenu_page(null, 'Editar Manifiesto', 'Editar Manifiesto', 'manage_options', 'edit-manifest', 'tp_edit_manifest_page');
 function tp_edit_manifest_page() {
     global $wpdb;
     $table_manifests = $wpdb->prefix . 'tracking_manifests';
@@ -134,8 +143,5 @@ function tp_edit_manifest_page() {
     echo '<label>Fecha:</label><input type="date" name="date" value="' . esc_attr($manifest->date) . '" required /><br />';
     echo '<input type="submit" name="tp_update_manifest" class="button button-primary" value="Actualizar" />';
     echo '</form>';
-    echo '<h2>Importar Archivo Excel</h2>';
-    echo '<input type="file" name="tp_excel_file" accept=".csv" required />';
-    echo '<input type="submit" class="button button-primary" value="Importar" />';
     echo '</div>';
 }
