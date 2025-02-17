@@ -15,8 +15,10 @@ function disable_post_types() {
     remove_menu_page('edit.php'); // Entradas
     remove_menu_page('edit.php?post_type=page'); // Páginas
     remove_menu_page('edit-comments.php');
+    remove_menu_page('tools.php');
+    remove_menu_page('options-general.php');
 }
-//add_action('admin_menu', 'disable_post_types');
+add_action('admin_menu', 'disable_post_types');
 
 // Desactivar comentarios
 function disable_comments() {
@@ -61,7 +63,8 @@ function disable_wp_updates() {
 //add_action('init', 'disable_wp_updates');
 
 // Desactivar el Editor de Apariencia y Personalización
-/*function disable_theme_customization() {
+function disable_theme_customization() {
+    remove_menu_page('update-core.php');
     remove_menu_page('themes.php'); // Eliminar menú Apariencia
     define('DISALLOW_FILE_EDIT', true);
     define('DISALLOW_FILE_MODS', true);
@@ -73,7 +76,7 @@ function disable_site_editor() {
     remove_theme_support('block-templates');
 }
 add_action('after_setup_theme', 'disable_site_editor');
-*/
+
 // Desactivar la Biblioteca de Medios y la opción de subir archivos
 function disable_media_library() {
     remove_menu_page('upload.php');
